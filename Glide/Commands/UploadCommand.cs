@@ -5,6 +5,7 @@ namespace Glide.Commands;
 
 /// <summary>
 /// Does the following git workflow:
+/// 0. Check if there are any changes to commit
 /// 1. git add .
 /// 2. git commit -m "commit message"
 /// 3. Check upstream branch
@@ -27,6 +28,19 @@ public class UploadCommand : ICommand
 
         // Get commit message from arguments
         string commitMessage = args[0];
+
+        // Check if there are any changes to commit
+        var statusResponse = GitRunner.Run("status --porcelain");
+        if (statusResponse.ExitCode != 0)
+        {
+            Console.WriteLine($"Error checking git status:\n{statusResponse.Error}");
+            return;
+        }
+        if(string.IsNullOrEmpty(statusResponse.Output))
+        {
+            Console.WriteLine("No changes to commit.");
+            return;
+        }
 
         var commands = new List<string>
         {
