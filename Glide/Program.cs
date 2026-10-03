@@ -21,6 +21,9 @@ namespace Glide
                 case "version":
                     VersionCommand.Execute();
                     break;
+                case "upload":
+                    UploadCommand.Execute(args.Skip(1).ToArray());
+                    break;
                 default:
                     Console.WriteLine($"Unknown command: {command}");
                     HelpCommand.Execute();
