@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using Glide.Core;
 
 namespace Glide.Commands;
 
@@ -12,11 +13,7 @@ namespace Glide.Commands;
 /// </summary>
 public class UploadCommand : ICommand
 {
-    private class ProcessResponse
-    {
-        public string Output { get; set; } = string.Empty;
-        public string Error { get; set; } = string.Empty;
-    }
+    
     public static void Execute(string[] args)
     {
 
@@ -31,11 +28,6 @@ public class UploadCommand : ICommand
         // Get commit message from arguments
         string commitMessage = args[0];
 
-        // Step 1: git add .
-        ProcessResponse processResponse = new ProcessResponse();
-
-
-
         var commands = new List<string>
         {
             "add .",
@@ -45,17 +37,10 @@ public class UploadCommand : ICommand
 
         foreach (var command in commands)
         {
-            using var process = CreateGitProcess(command);
-
-            process.Start();
-            processResponse.Output = process.StandardOutput.ReadToEnd();
-            
-            process.WaitForExit();
-            processResponse.Error = process.StandardError.ReadToEnd();
-
-            if (process.ExitCode != 0)
+            var response = GitRunner.Run(command);
+            if (response.ExitCode != 0)
             {
-                Console.WriteLine($"Error executing {command}: {processResponse.Error}");
+                Console.WriteLine($"Error executing git {command}:\n{response.Error}");
                 return;
             }
             else
@@ -65,19 +50,5 @@ public class UploadCommand : ICommand
         }
     }
 
-    private static Process CreateGitProcess(string arguments)
-    {
-        return new Process
-        {
-            StartInfo = new ProcessStartInfo
-            {
-                FileName = "git",
-                Arguments = arguments,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true
-            }
-        };
-    }
+    
 }
