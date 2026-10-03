@@ -48,8 +48,10 @@ public class UploadCommand : ICommand
             using var process = CreateGitProcess(command);
 
             process.Start();
-
+            processResponse.Output = process.StandardOutput.ReadToEnd();
+            
             process.WaitForExit();
+            processResponse.Error = process.StandardError.ReadToEnd();
 
             if (process.ExitCode != 0)
             {
