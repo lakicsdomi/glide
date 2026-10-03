@@ -40,7 +40,11 @@ public class UploadCommand : ICommand
             var response = GitRunner.Run(command);
             if (response.ExitCode != 0)
             {
-                Console.WriteLine($"Error executing git {command}:\n{response.Error}");
+                string errorMessage = string.IsNullOrWhiteSpace(response.Error) 
+                    ? response.Output 
+                    : response.Error;
+                    
+                Console.WriteLine($"Error executing git {command}:\n{errorMessage}");
                 return;
             }
             else
