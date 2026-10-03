@@ -480,3 +480,7 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+dotnet-tools.json
+Glide/obj/Glide.csproj.nuget.dgspec.json
+Glide/obj/project.assets.json
+Glide/obj/project.nuget.cache
