@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using Glide.Core;
 
 namespace Glide.Commands;
@@ -26,68 +25,128 @@ public class UploadCommand : ICommand
             return;
         }
 
-        // Get commit message from arguments
-        string commitMessage = args[0];
-
-        // Check if there are any changes to commit
-        var statusResponse = GitRunner.Run("status --porcelain");
-        if (statusResponse.ExitCode != 0)
-        {
-            Console.WriteLine($"Error checking git status:\n{statusResponse.Error}");
+        if (!HasChanges())
             return;
-        }
-        if(string.IsNullOrEmpty(statusResponse.Output))
-        {
-            Console.WriteLine("No changes to commit.");
+
+        if (!StageAll())
             return;
-        }
 
-        var commands = new List<string>
-        {
-            "add .",
-            $"commit -m \"{commitMessage}\""
-        };
+        if (!Commit(args[0]))
+            return;
 
-        foreach (var command in commands)
-        {
-            RunCommand(command);
-        }
+        var branchName = GetBranch();
+        if (string.IsNullOrWhiteSpace(branchName))
+            return;
 
-        // Get branch
-        var branch = GitRunner.Run("branch --show-current")
-            .Output
-            .Trim();
-
-        // Check if remote branch exists
-        var response = GitRunner.Run($"ls-remote --exit-code --heads origin {branch}");
-        bool exists = response.ExitCode == 0;
-        if (exists)
-        {
-            RunCommand("push");
-        }
-        else
-        {
-            RunCommand($"push -u origin {branch}");
-        }
+        SafePush(branchName);
 
     }
 
-    private static void RunCommand(string command)
+    /// <summary>
+    /// Push to remote branch, create upstream if it doesn't exist.
+    /// </summary>
+    private static void SafePush(string branch)
     {
-        var response = GitRunner.Run(command);
-        if (response.ExitCode != 0)
+        // Check for remote branch
+        var response = GitRunner.Run(
+            "ls-remote",
+            "--exit-code",
+            "--heads",
+            "origin",
+            branch);
+
+        // Upstream branch Exists
+        if (response.Success)
+        {
+            RunCommand("push");
+            return;
+        }
+
+        // No upstream
+        if (response.ExitCode == 2)
+        {
+            RunCommand("push", "-u", "origin", branch);
+            return;
+        }
+
+        var errorMessage = string.IsNullOrWhiteSpace(response.Error)
+            ? response.Output
+            : response.Error;
+
+        Console.WriteLine($"Error checking remote branch:\n{errorMessage}");
+    }
+
+    /// <summary>
+    /// Get current branch, returns null if error occurs
+    /// </summary>
+    private static string? GetBranch()
+    {
+        var response = GitRunner.Run("branch", "--show-current");
+        if (!response.Success)
+        {
+            Console.WriteLine($"Error getting current branch:\n{response.Error}");
+            return null;
+        }
+
+        return response.Output.Trim();
+    }
+
+    /// <summary>
+    /// Stage all changes
+    /// </summary>
+    private static bool StageAll()
+    {
+        return RunCommand("add", ".");
+    }
+
+    /// <summary>
+    /// Commit changes
+    /// </summary>
+    private static bool Commit(string msg)
+    {
+        return RunCommand("commit", "-m", msg);
+    }
+
+    /// <summary>
+    /// Check if there are any changes to commit
+    /// </summary>
+    private static bool HasChanges()
+    {
+        
+        var statusResponse = GitRunner.Run("status", "--porcelain");
+        if (!statusResponse.Success)
+        {
+            Console.WriteLine($"Error checking git status:\n{statusResponse.Error}");
+            return false;
+        }
+        if (string.IsNullOrEmpty(statusResponse.Output))
+        {
+            Console.WriteLine("No changes to commit.");
+            return false;
+        }
+        return true;
+    }
+
+    /// <summary>
+    /// Run a git command and handle errors
+    /// </summary>
+    private static bool RunCommand(params string[] args)
+    {
+        var response = GitRunner.Run(args);
+        if (!response.Success)
         {
             string errorMessage = string.IsNullOrWhiteSpace(response.Error)
                 ? response.Output
                 : response.Error;
 
-            Console.WriteLine($"Error executing git {command}:\n{errorMessage}");
-            return;
+            Console.WriteLine($"Error executing git {String.Join(" ", args)}:\n{errorMessage}");
+            return false;
         }
         else
         {
-            Console.WriteLine($"Successfully executed: git {command}");
+            Console.WriteLine($"Successfully executed: git {String.Join(" ", args)}");
         }
+        return true;
     }
 
     

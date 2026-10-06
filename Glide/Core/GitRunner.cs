@@ -9,9 +9,10 @@ public class GitRunner
         public int ExitCode { get; set; }
         public string Output { get; set; } = string.Empty;
         public string Error { get; set; } = string.Empty;
+        public bool Success => ExitCode == 0;
     }
 
-    public static ProcessResponse Run(string arguments)
+    public static ProcessResponse Run(params string[] arguments)
     {
         ProcessResponse processResponse = new ProcessResponse();
         using var process = CreateGitProcess(arguments);
@@ -23,19 +24,22 @@ public class GitRunner
         return processResponse;    
     }
 
-    private static Process CreateGitProcess(string arguments)
+    private static Process CreateGitProcess(string[] arguments)
     {
-        return new Process
+        var startInfo = new ProcessStartInfo
         {
-            StartInfo = new ProcessStartInfo
-            {
-                FileName = "git",
-                Arguments = arguments,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true
-            }
+            FileName = "git",
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true
         };
+
+        foreach (var argument in arguments)
+        {
+            startInfo.ArgumentList.Add(argument);
+        }
+
+        return new Process { StartInfo = startInfo };
     }
 }
