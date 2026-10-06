@@ -46,25 +46,47 @@ public class UploadCommand : ICommand
         {
             "add .",
             $"commit -m \"{commitMessage}\""
-            // You can add more commands here as needed
         };
 
         foreach (var command in commands)
         {
-            var response = GitRunner.Run(command);
-            if (response.ExitCode != 0)
-            {
-                string errorMessage = string.IsNullOrWhiteSpace(response.Error) 
-                    ? response.Output 
-                    : response.Error;
-                    
-                Console.WriteLine($"Error executing git {command}:\n{errorMessage}");
-                return;
-            }
-            else
-            {
-                Console.WriteLine($"Successfully executed: git {command}");
-            }
+            RunCommand(command);
+        }
+
+        // Get branch
+        var branch = GitRunner.Run("branch --show-current")
+            .Output
+            .Trim();
+
+        // Check if remote branch exists
+        var response = GitRunner.Run($"ls-remote --exit-code --heads origin {branch}");
+        bool exists = response.ExitCode == 0;
+        if (exists)
+        {
+            RunCommand("push");
+        }
+        else
+        {
+            RunCommand($"push -u origin {branch}");
+        }
+
+    }
+
+    private static void RunCommand(string command)
+    {
+        var response = GitRunner.Run(command);
+        if (response.ExitCode != 0)
+        {
+            string errorMessage = string.IsNullOrWhiteSpace(response.Error)
+                ? response.Output
+                : response.Error;
+
+            Console.WriteLine($"Error executing git {command}:\n{errorMessage}");
+            return;
+        }
+        else
+        {
+            Console.WriteLine($"Successfully executed: git {command}");
         }
     }
 
